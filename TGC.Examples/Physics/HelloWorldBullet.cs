@@ -70,8 +70,8 @@ namespace TGC.Examples.Physics
             floorBody = new RigidBody(floorInfo);
             dynamicsWorld.AddRigidBody(floorBody);
 
-            boxShape = new BoxShape(5, 5, 5);
-            var boxTransform = BsMatrix.Identity;
+            boxShape = new BoxShape(10, 10, 10);
+            var boxTransform = BsMatrix.RotationQuaternion(BsQuaternion.One);
             boxTransform.Origin = new BsVector3(10, 100, 10);
             DefaultMotionState boxMotionState = new DefaultMotionState(boxTransform);
             BsVector3 boxLocalInertia = boxShape.CalculateLocalInertia(1f);
@@ -91,11 +91,12 @@ namespace TGC.Examples.Physics
             dynamicsWorld.AddRigidBody(ballBody);
 
             var center = new Vector3(0, 0, 0);
-            var size = new Vector3(10, 10, 10);
+            var size = new Vector3(20, 20, 20);
             var color = Color.Red;
             box1 = TgcBox.fromSize(size, texture);
             sphere = new TgcSphere(1, texture.Clone(), new Vector3(0, 0, 0));
             sphere.updateValues();
+
             //Ubicar la camara del framework mirando al centro de este objeto.
             //La camara por default del framework es RotCamera, cuyo comportamiento es
             //centrarse sobre un objeto y permitir rotar y hacer zoom con el mouse.
@@ -174,7 +175,7 @@ namespace TGC.Examples.Physics
             m.M42 = bs.M42;
             m.M43 = bs.M43;
             m.M44 = bs.M44;
-            sphere.Transform = Matrix.Scaling(10,10,10)*m;//Matrix.Identity * Matrix.Translation(0, 30f, 0);
+            sphere.Transform = Matrix.Scaling(10, 10, 10) * m;//Matrix.Identity * Matrix.Translation(0, 30f, 0);  
             //sphere.render();
             sphere.render();
 
