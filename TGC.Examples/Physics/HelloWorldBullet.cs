@@ -72,7 +72,7 @@ namespace TGC.Examples.Physics
 
             boxShape = new BoxShape(5, 5, 5);
             var boxTransform = BsMatrix.Identity;
-            boxTransform.Origin = new BsVector3(0, 20, 5);
+            boxTransform.Origin = new BsVector3(10, 100, 10);
             DefaultMotionState boxMotionState = new DefaultMotionState(boxTransform);
             BsVector3 boxLocalInertia = boxShape.CalculateLocalInertia(1f);
             var boxInfo = new RigidBodyConstructionInfo(1f, boxMotionState, boxShape);
@@ -81,27 +81,27 @@ namespace TGC.Examples.Physics
 
             ballShape = new SphereShape(10);
             var ballTransform = BsMatrix.Identity;
-            ballTransform.Origin = new BsVector3(0, 40, 0);
+            ballTransform.Origin = new BsVector3(0, 50, 0);
             var ballMotionState = new DefaultMotionState(ballTransform);
             BsVector3 ballLocalInertia = ballShape.CalculateLocalInertia(1f);
             var ballInfo = new RigidBodyConstructionInfo(1, ballMotionState, ballShape, ballLocalInertia);
-            //ballInfo.LinearSleepingThreshold = 0.1f;
-            //ballInfo.AngularSleepingThreshold = 0.1f;
-            ballBody  = new RigidBody(boxInfo);
-            dynamicsWorld.AddRigidBody(boxBody);
+            ballInfo.LinearSleepingThreshold = 0.1f;
+            ballInfo.AngularSleepingThreshold = 0.1f;
+            ballBody  = new RigidBody(ballInfo);
+            dynamicsWorld.AddRigidBody(ballBody);
 
             var center = new Vector3(0, 0, 0);
             var size = new Vector3(10, 10, 10);
             var color = Color.Red;
             box1 = TgcBox.fromSize(size, texture);
-            sphere = new TgcSphere(10, texture, new Vector3(0, 20, 0));
-
-			//Ubicar la camara del framework mirando al centro de este objeto.
-			//La camara por default del framework es RotCamera, cuyo comportamiento es
-			//centrarse sobre un objeto y permitir rotar y hacer zoom con el mouse.
-			//Con clic izquierdo del mouse se rota la cámara, con el derecho se traslada y con la rueda se hace zoom.
-			//Otras cámaras disponibles (a modo de ejemplo) son: FpsCamera (1ra persona) y ThirdPersonCamera (3ra persona).
-			Camara = new TgcRotationalCamera(new Vector3(0, 20, 0), 100, Input);
+            sphere = new TgcSphere(1, texture.Clone(), new Vector3(0, 0, 0));
+            sphere.updateValues();
+            //Ubicar la camara del framework mirando al centro de este objeto.
+            //La camara por default del framework es RotCamera, cuyo comportamiento es
+            //centrarse sobre un objeto y permitir rotar y hacer zoom con el mouse.
+            //Con clic izquierdo del mouse se rota la cámara, con el derecho se traslada y con la rueda se hace zoom.
+            //Otras cámaras disponibles (a modo de ejemplo) son: FpsCamera (1ra persona) y ThirdPersonCamera (3ra persona).
+            Camara = new TgcRotationalCamera(new Vector3(0, 20, 0), 100, Input);
         }
 
         public override void Update()
@@ -129,10 +129,11 @@ namespace TGC.Examples.Physics
 
             DrawText.drawText("boxBody: " + boxBody.MotionState.WorldTransform.ToString(), 5, 20, System.Drawing.Color.Red);
             DrawText.drawText("ballBody: " + ballBody.MotionState.WorldTransform.ToString(), 5, 40, System.Drawing.Color.Red);
-            DrawText.drawText("boxBody: " + boxBody.MotionState.WorldTransform.ToString(), 5, 60, System.Drawing.Color.Red);
-            
+            DrawText.drawText("boxBody interpolated: " + boxBody.InterpolationWorldTransform.ToString(), 5, 60, System.Drawing.Color.Red);
+            DrawText.drawText("ballBody interpolated: " + ballBody.InterpolationWorldTransform.ToString(), 5, 80, System.Drawing.Color.Red);
 
-            var bs = boxBody.MotionState.WorldTransform;
+
+            var bs = boxBody.InterpolationWorldTransform;
             var m = new Matrix();
             m.M11 = bs.M11;
             m.M12 = bs.M12;
@@ -152,10 +153,10 @@ namespace TGC.Examples.Physics
             m.M44 = bs.M44;
             //box1.Transform = Matrix.Identity * m;
             //Dibujar las cajas en pantalla
-            box1.Transform = Matrix.Identity;
+            box1.Transform = m;
             box1.render();
             
-            bs = ballBody.MotionState.WorldTransform;
+            bs = ballBody.InterpolationWorldTransform;
             m = new Matrix();
             m.M11 = bs.M11;
             m.M12 = bs.M12;
@@ -173,9 +174,9 @@ namespace TGC.Examples.Physics
             m.M42 = bs.M42;
             m.M43 = bs.M43;
             m.M44 = bs.M44;
-            box1.Transform = Matrix.Identity * Matrix.Translation(0, 30f, 0);
+            sphere.Transform = Matrix.Scaling(10,10,10)*m;//Matrix.Identity * Matrix.Translation(0, 30f, 0);
             //sphere.render();
-            box1.render();
+            sphere.render();
 
             floor.render();
 
