@@ -11,30 +11,33 @@ using Microsoft.DirectX.DirectInput;
 using BulletSharp;
 using BsVector3 = BulletSharp.Math.Vector3;
 using BsMatrix = BulletSharp.Math.Matrix;
-
+using BsQuaternion = BulletSharp.Math.Quaternion;
+using TGC.Core.Direct3D;
 
 namespace TGC.Examples.Physics
 {
-	
-	public class HelloWorldBullet : TGCExampleViewer
+
+    public class HelloWorldBullet : TGCExampleViewer
     {
-		//Variables para las cajas 3D
+        private TgcPlane floor;
         private TgcBox box1;
-		private TgcBox box2;
+		private TgcSphere sphere;
 		private TgcBox box3;
-        private CollisionWorld world;
 
 
         DiscreteDynamicsWorld dynamicsWorld;
         CollisionDispatcher dispatcher;
         DefaultCollisionConfiguration collisionConfiguration;
         SequentialImpulseConstraintSolver constraintSolver;
-        AxisSweep3 overlappingPairCache;
+        BroadphaseInterface overlappingPairCache;
 
         //shapes:
+        RigidBody floorBody;
+
         BoxShape boxShape;
         RigidBody boxBody;
-
+        SphereShape ballShape;
+        RigidBody ballBody;
 
         public HelloWorldBullet(string mediaDir, string shadersDir, TgcUserVars userVars, TgcModifiers modifiers)
             : base(mediaDir, shadersDir, userVars, modifiers)
@@ -46,43 +49,69 @@ namespace TGC.Examples.Physics
 
         public override void Init()
         {
+            var floorTexture = TgcTexture.createTexture(D3DDevice.Instance.Device, MediaDir + "Texturas\\granito.jpg");
+            floor = new TgcPlane(new Vector3(-200, 0, -200), new Vector3(400, 0f, 400), TgcPlane.Orientations.XZplane, floorTexture);
+
+            var texture = TgcTexture.createTexture(D3DDevice.Instance.Device, MediaDir + "\\Texturas\\madera.jpg");
+
             collisionConfiguration = new DefaultCollisionConfiguration();
             dispatcher = new CollisionDispatcher(collisionConfiguration);
+            GImpactCollisionAlgorithm.RegisterAlgorithm(dispatcher);
             constraintSolver = new SequentialImpulseConstraintSolver();
-            overlappingPairCache = new AxisSweep3(new BsVector3(-5000f, -5000f, -5000f), new BsVector3(5000f, 5000f, 5000f), 8192);
+            overlappingPairCache = new DbvtBroadphase(); //AxisSweep3(new BsVector3(-5000f, -5000f, -5000f), new BsVector3(5000f, 5000f, 5000f), 8192);
             dynamicsWorld = new DiscreteDynamicsWorld(dispatcher, overlappingPairCache,
                                                         constraintSolver,
                                                         collisionConfiguration);
-            dynamicsWorld.Gravity = new BsVector3(0, -9.81f, 0);
+            dynamicsWorld.Gravity = new BsVector3(0, -10f, 0);
+
+            var floorShape = new StaticPlaneShape(new BsVector3(0, 1, 0), 0);
+            var floorMotionState = new DefaultMotionState();
+            var floorInfo = new RigidBodyConstructionInfo(0, floorMotionState, floorShape);
+            floorBody = new RigidBody(floorInfo);
+            dynamicsWorld.AddRigidBody(floorBody);
 
             boxShape = new BoxShape(5, 5, 5);
             var boxTransform = BsMatrix.Identity;
-            boxTransform.Origin = new BsVector3(0, -5, 0);   // Top of box at Y=0
-            DefaultMotionState motionState = new DefaultMotionState();
-            var info = new RigidBodyConstructionInfo(1f, motionState, boxShape);
-            boxBody = new RigidBody(info);
+            boxTransform.Origin = new BsVector3(0, 20, 5);
+            DefaultMotionState boxMotionState = new DefaultMotionState(boxTransform);
+            BsVector3 boxLocalInertia = boxShape.CalculateLocalInertia(1f);
+            var boxInfo = new RigidBodyConstructionInfo(1f, boxMotionState, boxShape);
+            boxBody = new RigidBody(boxInfo);
             dynamicsWorld.AddRigidBody(boxBody);
 
-            var center = new Vector3(0, -5, 0);
+            ballShape = new SphereShape(10);
+            var ballTransform = BsMatrix.Identity;
+            ballTransform.Origin = new BsVector3(0, 40, 0);
+            var ballMotionState = new DefaultMotionState(ballTransform);
+            BsVector3 ballLocalInertia = ballShape.CalculateLocalInertia(1f);
+            var ballInfo = new RigidBodyConstructionInfo(1, ballMotionState, ballShape, ballLocalInertia);
+            //ballInfo.LinearSleepingThreshold = 0.1f;
+            //ballInfo.AngularSleepingThreshold = 0.1f;
+            ballBody  = new RigidBody(boxInfo);
+            dynamicsWorld.AddRigidBody(boxBody);
+
+            var center = new Vector3(0, 0, 0);
             var size = new Vector3(10, 10, 10);
             var color = Color.Red;
-            box1 = TgcBox.fromSize(size, color);
-			box1.Transform = Matrix.Translation(center);
+            box1 = TgcBox.fromSize(size, texture);
+            sphere = new TgcSphere(10, texture, new Vector3(0, 20, 0));
 
 			//Ubicar la camara del framework mirando al centro de este objeto.
 			//La camara por default del framework es RotCamera, cuyo comportamiento es
 			//centrarse sobre un objeto y permitir rotar y hacer zoom con el mouse.
 			//Con clic izquierdo del mouse se rota la cámara, con el derecho se traslada y con la rueda se hace zoom.
 			//Otras cámaras disponibles (a modo de ejemplo) son: FpsCamera (1ra persona) y ThirdPersonCamera (3ra persona).
-			Camara = new TgcRotationalCamera(box1.BoundingBox.calculateBoxCenter(),
-                box1.BoundingBox.calculateBoxRadius() * 5, Input);
+			Camara = new TgcRotationalCamera(new Vector3(0, 20, 0), 100, Input);
         }
 
         public override void Update()
         {
             PreUpdate();
 
-            dynamicsWorld.StepSimulation(ElapsedTime);            
+            dynamicsWorld.StepSimulation(1/60f, 10);
+            
+                
+                    
 		}
 
         /// <summary>
@@ -97,7 +126,12 @@ namespace TGC.Examples.Physics
         {
             //Iniciamoss la escena
             PreRender();
+
+            DrawText.drawText("boxBody: " + boxBody.MotionState.WorldTransform.ToString(), 5, 20, System.Drawing.Color.Red);
+            DrawText.drawText("ballBody: " + ballBody.MotionState.WorldTransform.ToString(), 5, 40, System.Drawing.Color.Red);
+            DrawText.drawText("boxBody: " + boxBody.MotionState.WorldTransform.ToString(), 5, 60, System.Drawing.Color.Red);
             
+
             var bs = boxBody.MotionState.WorldTransform;
             var m = new Matrix();
             m.M11 = bs.M11;
@@ -116,10 +150,34 @@ namespace TGC.Examples.Physics
             m.M42 = bs.M42;
             m.M43 = bs.M43;
             m.M44 = bs.M44;
-            box1.Transform = m;
+            //box1.Transform = Matrix.Identity * m;
             //Dibujar las cajas en pantalla
+            box1.Transform = Matrix.Identity;
             box1.render();
-			
+            
+            bs = ballBody.MotionState.WorldTransform;
+            m = new Matrix();
+            m.M11 = bs.M11;
+            m.M12 = bs.M12;
+            m.M13 = bs.M13;
+            m.M14 = bs.M14;
+            m.M21 = bs.M21;
+            m.M22 = bs.M22;
+            m.M23 = bs.M23;
+            m.M24 = bs.M24;
+            m.M31 = bs.M31;
+            m.M32 = bs.M32;
+            m.M33 = bs.M33;
+            m.M34 = bs.M34;
+            m.M41 = bs.M41;
+            m.M42 = bs.M42;
+            m.M43 = bs.M43;
+            m.M44 = bs.M44;
+            box1.Transform = Matrix.Identity * Matrix.Translation(0, 30f, 0);
+            //sphere.render();
+            box1.render();
+
+            floor.render();
 
             //Finalizamos el renderizado de la escena
             PostRender();
@@ -142,6 +200,10 @@ namespace TGC.Examples.Physics
             overlappingPairCache.Dispose();
             boxShape.Dispose();
             boxBody.Dispose();
+
+            sphere.dispose();
+            ballShape.Dispose();
+            ballBody.Dispose();
         }
     }
 }
