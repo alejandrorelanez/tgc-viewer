@@ -13,6 +13,7 @@ using BsVector3 = BulletSharp.Math.Vector3;
 using BsMatrix = BulletSharp.Math.Matrix;
 using BsQuaternion = BulletSharp.Math.Quaternion;
 using TGC.Core.Direct3D;
+using TGC.Examples.Camara;
 
 namespace TGC.Examples.Physics
 {
